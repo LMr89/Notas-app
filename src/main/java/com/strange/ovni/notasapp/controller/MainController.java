@@ -19,6 +19,8 @@ import com.strange.ovni.notasapp.view.PopupTreeMenu;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -33,33 +35,38 @@ import java.util.logging.Logger;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 import org.drjekyll.fontchooser.FontDialog;
 
 /**
  *
  * @author MrRob0t
  */
-public final class MainController implements ActionListener, Observator, OnPassData {
+public final class MainController implements ActionListener, MouseListener, Observator, OnPassData {
 
-    private FrmPrincipal mainView;
-    private LoadingDialog loadDialog;
-    private NameItemDialog nameItemDialog;
-    private FontDialog fontDialog; //Dialogo para escoger la fuente
+    private final FrmPrincipal mainView;
+    private final LoadingDialog loadDialog;
+    private final NameItemDialog nameItemDialog;
+    private final FontDialog fontDialog; //Dialogo para escoger la fuente
     private CustomTreeModel modelTree = new CustomTreeModel();
 
+    //Controllers
+    private FrmThemeController themeController;
     private DirectoryDialogController dialogController;
     private NameItemController nameItemController;
+    private FrmAcercaController acercaController;
 
     //PopupMenu para pasarlo como referencia al TreeActionListener
     private PopupTreeMenu popMenu;
-    private ExecutorService executorThreads;
+    private final ExecutorService executorThreads;
     private TreeActionListener treeActionListener;
 
     //Clase nota para operar
     private final NoteImpl notaActions;
 
     //Clase encargada de escribir los cambios del usuario en el archivo properties
-    private NotasAppConfig appConfig;
+    private final NotasAppConfig appConfig;
 
     //Este string almacenara la ruta enviada desde el popup menu hasta aqui
     //Ambas vistas compartirar este dato
@@ -67,7 +74,14 @@ public final class MainController implements ActionListener, Observator, OnPassD
 
     private Future<Object> resultAsyncTask;
     private CustomTreeNode currentNodeSelected;
- 
+
+    public void setThemeController(FrmThemeController themeController) {
+        this.themeController = themeController;
+    }
+
+    public void setAcercaController(FrmAcercaController acercaController) {
+        this.acercaController = acercaController;
+    }
 
     public MainController(FrmPrincipal mainView) {
         this.mainView = mainView;
@@ -113,10 +127,11 @@ public final class MainController implements ActionListener, Observator, OnPassD
         this.mainView.getMnuItemRutaPrincipal().addActionListener(this);
         this.mainView.getMnuItemGuardar().addActionListener(this);
         this.mainView.getMnuItemNuevo().addActionListener(this);
-         this.mainView.getMnuItemEliminar().addActionListener(this);
+        this.mainView.getMnuItemEliminar().addActionListener(this);
         this.mainView.getMnuItemSalir().addActionListener(this);
         this.mainView.getMnuItemFuente().addActionListener(this);
         this.mainView.getMnuItemTema().addActionListener(this);
+        this.mainView.getMnuAcerca().addMouseListener(this);
 
         //Cargar Árbol de manera asincrona
         resultAsyncTask = executorThreads.submit(AsyncTask);
@@ -165,14 +180,14 @@ public final class MainController implements ActionListener, Observator, OnPassD
 
     private void addComment() {
         this.mainView.getTxtContenidoNota().setText(this.mainView.getTxtContenidoNota().getText()
-                + "\n" + ("---------------------").repeat(3) + "<              >" + ("---------------------").repeat(3) + "\n");
+                + "\n" + ("------------------------").repeat(3) + "<              >" + ("----------------").repeat(3) + "\n");
     }
 
     private void addDate() {
         String date = new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date());
 
         this.mainView.getTxtContenidoNota().setText(this.mainView.getTxtContenidoNota().getText()
-                + "\n" + ("--------------------------").repeat(3) + "<" + date + ">" + ("----------------------------").repeat(3) + "\n");
+                + "\n" + ("-----------------").repeat(3) + "<" + date + ">" + ("----------------------------").repeat(3) + "\n");
     }
 
     private void writeUserInputIntoNote() {
@@ -388,6 +403,9 @@ public final class MainController implements ActionListener, Observator, OnPassD
             //JOptionPane.showMessageDialog(this.mainView, "Menu item", "PropertiesFIle", JOptionPane.INFORMATION_MESSAGE);
         }
 
+        if (e.getSource() == this.mainView.getMnuItemTema()) {
+            themeController.showDialog();
+        }
         if (e.getSource() == this.mainView.getMnuItemFuente()) {
             fontDialog.setLocationRelativeTo(null);
             fontDialog.setVisible(true);
@@ -398,17 +416,17 @@ public final class MainController implements ActionListener, Observator, OnPassD
             }
 
         }
-        
-         if (e.getSource() == this.mainView.getMnuItemNuevo()) {
-             createNewNote();
+
+        if (e.getSource() == this.mainView.getMnuItemNuevo()) {
+            createNewNote();
         }
-          if (e.getSource() == this.mainView.getMnuItemGuardar()) {
-              writeUserInputIntoNote();
+        if (e.getSource() == this.mainView.getMnuItemGuardar()) {
+            writeUserInputIntoNote();
         }
-           if (e.getSource() == this.mainView.getMnuItemEliminar()) {
-               deleteNote();
+        if (e.getSource() == this.mainView.getMnuItemEliminar()) {
+            deleteNote();
         }
-        
+
         if (e.getSource() == this.mainView.getMnuItemSalir()) {
             closeNotasApp();
 
@@ -432,7 +450,6 @@ public final class MainController implements ActionListener, Observator, OnPassD
         try {
             AsyncTask.call();
         } catch (Exception ex) {
-            ex.printStackTrace();
         }
         //Cargar Árbol de manera asincrona
         //executorThreads.invokeAll(new HashSet<Callable<Object>>().add(AsyncTask));
@@ -452,6 +469,29 @@ public final class MainController implements ActionListener, Observator, OnPassD
     @Override
     public void transferData(Object component) {
         currentNodeSelected = (CustomTreeNode) component;
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if (e.getSource() == this.mainView.getMnuAcerca()) {
+            acercaController.showAcerca();
+        }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
     }
 
 }

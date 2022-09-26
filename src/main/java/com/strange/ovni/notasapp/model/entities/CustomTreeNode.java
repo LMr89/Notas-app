@@ -56,7 +56,7 @@ public class CustomTreeNode {
             case "jpg":
             case "svg":
             case "webp":
-                ico = UrlImages.NOTE_ICON;
+                ico = UrlImages.IMAGE_ICON;
                 break;
 
             case "pdf":

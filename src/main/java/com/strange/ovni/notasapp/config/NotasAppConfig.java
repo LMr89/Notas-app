@@ -5,7 +5,10 @@
  */
 package com.strange.ovni.notasapp.config;
 
+import com.strange.ovni.notasapp.view.Notifications;
 import java.awt.Font;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -15,6 +18,8 @@ public class NotasAppConfig extends ApplicationPropertiesClass {
 
     private String mainDirectoryPath;
     private String theme;
+    private JFileChooser chooser = new JFileChooser() ;
+    
 
     private Font fontUser;
     private static NotasAppConfig appConfig;
@@ -28,6 +33,7 @@ public class NotasAppConfig extends ApplicationPropertiesClass {
     public static NotasAppConfig getInstance() {
         if (appConfig == null) {
             appConfig = new NotasAppConfig();
+            
 
         }
 
@@ -41,6 +47,10 @@ public class NotasAppConfig extends ApplicationPropertiesClass {
     private final String FONT_SIZE = "fontConfigSize";
     private final String THEME_CONFIG = "themeConfig";
     public static final String APP_NAME = "Notas App";
+    
+    
+    //Default Values 
+    public final String DEFAULT_THEME_CONFIG = "com.formdev.flatlaf.intellijthemes.FlatCarbonIJTheme";
 
     private NotasAppConfig() {
         super();//Llamo al constructor del padre
@@ -49,7 +59,35 @@ public class NotasAppConfig extends ApplicationPropertiesClass {
         fontFamily = "";
         fontStyle = 0;
         fontSize = 0;
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
+    }
+    public  void settingEmptyValues(){
+       setFontUser(new Font("Tahoma",Font.BOLD,14));
+        setMainDirectoryPath("");
+        setTheme("");
+        saveAllChanges();
+        
+        
+    }
+    public void checkForValues(){
+       
+        if (getMainDirectoryPath().isEmpty()) {
+            int selection = Notifications.askForSomething("¿Desea configurar su directorio principal?");
+            if (selection == JOptionPane.YES_OPTION) {
+                int selectedDirectory = chooser.showOpenDialog(null);
+                
+                if (selectedDirectory == JFileChooser.APPROVE_OPTION) {
+                    setMainDirectoryPath(chooser.getSelectedFile().getAbsolutePath());
+                }else{
+                    Notifications.showWarning("Ups la aplicacion no te sera util sino configuras tu directorio principal\nConfigurlo llendo a CNFIGURACION -> RUTA PRINCIPAL");
+                }
+                
+            }else{
+                Notifications.showWarning("Ups la aplicacion no te sera util sino configuras tu directorio principal\nConfigurlo llendo a CNFIGURACION -> RUTA PRINCIPAL");
+            }
+            
+        }
     }
 
     public Font getFontUser() {

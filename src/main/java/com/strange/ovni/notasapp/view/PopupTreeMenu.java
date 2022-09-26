@@ -6,6 +6,7 @@
 package com.strange.ovni.notasapp.view;
 
 import com.google.common.io.Files;
+import com.strange.ovni.notasapp.config.NotasAppConfig;
 import com.strange.ovni.notasapp.controller.NameItemController;
 import com.strange.ovni.notasapp.listeners.OnPassData;
 import com.strange.ovni.notasapp.model.dao.NoteImpl;
@@ -16,15 +17,21 @@ import com.strange.ovni.notasapp.util.NoteLogRecord;
 import com.strange.ovni.notasapp.util.RecognizeItem;
 import com.strange.ovni.notasapp.util.ResizeImage;
 import com.strange.ovni.notasapp.util.UrlImages;
+import java.awt.Desktop;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+
 import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import org.apache.commons.io.FileUtils;
@@ -43,6 +50,13 @@ public class PopupTreeMenu extends JPopupMenu implements ActionListener, OnPassD
     private JMenuItem mnuItemRenameDirectory;
     private JMenuItem mnuItemDeleteDirectory;
 
+    private JMenuItem mnuImportFile;
+    private JMenuItem mnuItemReadPdf;
+
+    private JFileChooser directoryChooser;
+
+    private NotasAppConfig config;
+
     //Pasar por referencia el textarea para poder modificarlo y el textField del titulo
     private JEditorPane txtContentNote;
     private JTextField txtTitle;
@@ -57,6 +71,10 @@ public class PopupTreeMenu extends JPopupMenu implements ActionListener, OnPassD
     public PopupTreeMenu(NameItemController nameItemDialog) {
         this.nameItemDialogController = nameItemDialog;
         this.notaActions = new NoteImpl();
+        this.directoryChooser = new JFileChooser();
+        directoryChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+
+        config = NotasAppConfig.getInstance();
         init();
     }
 
@@ -100,6 +118,18 @@ public class PopupTreeMenu extends JPopupMenu implements ActionListener, OnPassD
         mnuItemDeleteDirectory.setIcon(ResizeImage.resize(UrlImages.DELETE_DIRECTORY_ICON, 20, 20));
         add(this.mnuItemDeleteDirectory);
 
+        add(new Separator());
+
+        mnuItemReadPdf = new JMenuItem("Leer documento");
+        mnuItemReadPdf.setIcon(ResizeImage.resize(UrlImages.SHOW_PDF_FILE, 20, 20));
+        add(this.mnuItemReadPdf);
+
+        add(new Separator());
+
+        mnuImportFile = new JMenuItem("Traer Archivo");
+        mnuImportFile.setIcon(ResizeImage.resize(UrlImages.IMPORT_FILE_ICON, 20, 20));
+        add(this.mnuImportFile);
+
         //Set Listeners
         mnuItemNewNote.addActionListener(this);
         mnuItemRenameNote.addActionListener(this);
@@ -108,6 +138,8 @@ public class PopupTreeMenu extends JPopupMenu implements ActionListener, OnPassD
         mnuItemNewDirectory.addActionListener(this);
         mnuItemRenameDirectory.addActionListener(this);
         mnuItemDeleteDirectory.addActionListener(this);
+        mnuItemReadPdf.addActionListener(this);
+        mnuImportFile.addActionListener(this);
 
     }
 
@@ -351,6 +383,16 @@ public class PopupTreeMenu extends JPopupMenu implements ActionListener, OnPassD
 
         }
 
+        /*Listener para los botone importar y ver pdf*/
+        if (e.getSource() == this.mnuImportFile) {
+            importFileToMainDirectory();
+
+        }
+
+        if (e.getSource() == this.mnuItemReadPdf) {
+            showPdfInNavigator();
+        }
+
     }
 
     //Al implementar este metodo callback lo que hara es transferirme lo seleccionado en el tree model 
@@ -365,6 +407,68 @@ public class PopupTreeMenu extends JPopupMenu implements ActionListener, OnPassD
     public void sendNotification() {
         this.treeObservator.updateState();
 
+    }
+
+    private void importFileToMainDirectory() {
+
+        try {
+            //Primero se verifica si el traspaso de datos no sea nulo por que si lo es habra errores
+            if (currentNodeSelected.getAbsolutePath() != null) {
+
+                //Se verifica que lo que haya escogido el usuario sera un directorio y no un archivo
+                if (RecognizeItem.isPathAFile(currentNodeSelected.getAbsolutePath())) {
+                    Notifications.showWarning("Porfavor seleccionar un folder");
+                } else {
+
+                    int option = directoryChooser.showOpenDialog(this);
+
+                    if (option == JFileChooser.APPROVE_OPTION) {
+                        File fileToTransfer = directoryChooser.getSelectedFile();
+                        String selectedDirectory = currentNodeSelected.getAbsolutePath() + File.separator + fileToTransfer.getName();
+
+                        FileUtils.moveFile(fileToTransfer, new File(selectedDirectory));
+                        sendNotification(); //mando la notificacion para recargar el arbol de directorios
+                    }
+                }
+
+            }
+
+        } catch (NullPointerException ex) {
+            Notifications.showWarning("Porfavor selecciona un folder para poder importar un archivo");
+        } catch (IOException ex) {
+            Logger.getLogger(PopupTreeMenu.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+    }
+
+    
+
+    private void showPdfInNavigator() {
+        try {
+            //Primero se verifica si el traspaso de datos no sea nulo por que si lo es habra errores
+            if (currentNodeSelected.getAbsolutePath() != null) {
+
+                //Se verifica que lo que haya escogido el usuario sera un directorio y no un archivo
+                if (!Files.getFileExtension(currentNodeSelected.getFileName()).equals("pdf")) {
+                    Notifications.showWarning("Porfavor un documento pdf para visualizarlo");
+                } else {
+                    //InputStream stream = new FileInputStream(new File(currentNodeSelected.getAbsolutePath()));
+                    Desktop.getDesktop().open(new File(currentNodeSelected.getAbsolutePath()));
+                    //JasperViewer viewe = new JasperViewer(stream, false);
+                    //viewe.setLocationRelativeTo(null);
+                    //viewe.setVisible(true);
+                    //Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + new File(currentNodeSelected.getAbsolutePath()));
+                }
+
+            }
+
+        } catch (NullPointerException ex) {
+            Notifications.showWarning("Porfavor selecciona un folder para poder importar un archivo");
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(PopupTreeMenu.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(PopupTreeMenu.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
 }
